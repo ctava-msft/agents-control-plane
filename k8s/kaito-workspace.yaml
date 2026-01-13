@@ -1,0 +1,33 @@
+apiVersion: kaito.sh/v1alpha1
+kind: Workspace
+metadata:
+  name: phi-3-mini-workspace
+  namespace: default
+spec:
+  # Model inference configuration
+  inference:
+    preset:
+      # Use Phi-3-mini as the base model (can be changed to other Foundry models)
+      name: phi-3-mini-4k-instruct
+      # Pull from Azure Foundry registry
+      # The image will be pulled from Azure Container Registry linked to Foundry
+  
+  # Resource requirements
+  resource:
+    # Number of GPU nodes
+    count: 1
+    # Instance type - GPU enabled
+    instanceType: Standard_NC6s_v3
+    # Node selector to target GPU node pool
+    labelSelector:
+      matchLabels:
+        kaito: "true"
+  
+  # Tuning configuration (optional)
+  # tuning:
+  #   preset:
+  #     name: phi-3-mini-4k-instruct
+  #   method: qlora
+  #   config: |
+  #     learning_rate: 0.0002
+  #     num_train_epochs: 1

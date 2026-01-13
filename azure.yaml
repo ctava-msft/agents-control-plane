@@ -1,0 +1,66 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+name: apim-mcp-aks-kaito
+metadata:
+  template: apim-mcp-aks-kaito@1.0.0
+  
+services:
+  mcp-server:
+    project: ./src/
+    language: python
+    host: aks
+    
+hooks:
+  # Post-provision hooks to set up AKS and Kaito
+  postprovision:
+    windows:
+      shell: pwsh
+      run: |
+        Write-Host "🔧 Setting up AKS cluster..." -ForegroundColor Cyan
+        
+        # Get AKS credentials
+        $aksName = azd env get-values | Select-String "AKS_CLUSTER_NAME" | ForEach-Object { ($_ -split '=')[1].Trim('"') }
+        $rgName = azd env get-values | Select-String "AZURE_RESOURCE_GROUP_NAME" | ForEach-Object { ($_ -split '=')[1].Trim('"') }
+        
+        if ($aksName -and $rgName) {
+          Write-Host "Getting AKS credentials..." -ForegroundColor Yellow
+          az aks get-credentials --resource-group $rgName --name $aksName --overwrite-existing
+          
+          Write-Host "✅ AKS credentials configured" -ForegroundColor Green
+          Write-Host ""
+          Write-Host "📝 Next steps:" -ForegroundColor Cyan
+          Write-Host "1. Install Kaito: ./scripts/install-kaito.ps1" -ForegroundColor White
+          Write-Host "2. Build and deploy: ./scripts/build-and-push.ps1" -ForegroundColor White
+          Write-Host "3. Deploy MCP server: kubectl apply -f k8s/mcp-server-deployment.yaml" -ForegroundColor White
+          Write-Host "4. Deploy Kaito workspace: kubectl apply -f k8s/kaito-foundry-workspace.yaml" -ForegroundColor White
+        } else {
+          Write-Host "⚠️  Could not find AKS cluster name or resource group" -ForegroundColor Yellow
+        }
+      continueOnError: false
+      interactive: true
+    
+    posix:
+      shell: sh
+      run: |
+        echo "🔧 Setting up AKS cluster..."
+        
+        # Get AKS credentials
+        export AKS_NAME=$(azd env get-values | grep AKS_CLUSTER_NAME | cut -d'=' -f2 | tr -d '"')
+        export RG_NAME=$(azd env get-values | grep AZURE_RESOURCE_GROUP_NAME | cut -d'=' -f2 | tr -d '"')
+        
+        if [ -n "$AKS_NAME" ] && [ -n "$RG_NAME" ]; then
+          echo "Getting AKS credentials..."
+          az aks get-credentials --resource-group "$RG_NAME" --name "$AKS_NAME" --overwrite-existing
+          
+          echo "✅ AKS credentials configured"
+          echo ""
+          echo "📝 Next steps:"
+          echo "1. Install Kaito: ./scripts/install-kaito.sh"
+          echo "2. Build and deploy: ./scripts/build-and-push.sh"
+          echo "3. Deploy MCP server: kubectl apply -f k8s/mcp-server-deployment.yaml"
+          echo "4. Deploy Kaito workspace: kubectl apply -f k8s/kaito-foundry-workspace.yaml"
+        else
+          echo "⚠️  Could not find AKS cluster name or resource group"
+        fi
+      continueOnError: false
+      interactive: true

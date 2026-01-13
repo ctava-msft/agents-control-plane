@@ -1,0 +1,49 @@
+apiVersion: kaito.sh/v1alpha1
+kind: Workspace
+metadata:
+  name: azure-foundry-model
+  namespace: default
+  annotations:
+    description: "Workspace for deploying Azure Foundry models via Kaito"
+spec:
+  # Model inference configuration using Azure Foundry registry
+  inference:
+    # Custom preset configuration for Azure Foundry models
+    preset:
+      # Phi-3 models from Azure Foundry
+      # Can be changed to: phi-3-mini-128k-instruct, phi-3-medium, etc.
+      name: phi-3-mini-4k-instruct
+      
+    # Alternative: Use custom image from Azure Foundry registry
+    # template:
+    #   image: <your-acr>.azurecr.io/foundry/phi-3-mini-4k-instruct:latest
+    #   imagePullPolicy: IfNotPresent
+  
+  # Resource requirements for model deployment
+  resource:
+    # Number of instances (GPU nodes)
+    count: 1
+    
+    # GPU-enabled VM size
+    # Options: Standard_NC6s_v3, Standard_NC12s_v3, Standard_NC24s_v3
+    # Or: Standard_ND40rs_v2 (for larger models)
+    instanceType: Standard_NC6s_v3
+    
+    # Label selector to target GPU node pool created by Bicep
+    labelSelector:
+      matchLabels:
+        kaito: "true"
+        workload: "gpu"
+  
+  # Tuning configuration (optional - for fine-tuning models)
+  # Uncomment if you want to fine-tune the model
+  # tuning:
+  #   preset:
+  #     name: phi-3-mini-4k-instruct
+  #   method: qlora  # or lora
+  #   input: azureml://subscriptions/<sub-id>/resourcegroups/<rg>/workspaces/<ws>/data/<dataset>
+  #   config: |
+  #     learning_rate: 0.0002
+  #     num_train_epochs: 3
+  #     per_device_train_batch_size: 4
+  #     gradient_accumulation_steps: 4

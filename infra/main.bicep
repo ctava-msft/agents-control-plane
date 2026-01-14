@@ -256,6 +256,47 @@ module monitoring './core/monitor/monitoring.bicep' = {
   }
 }
 
+// Azure Key Vault for secrets management
+module keyVault './core/keyvault/keyvault.bicep' = {
+  name: 'keyVault'
+  scope: rg
+  params: {
+    keyVaultName: '${abbrs.keyVaultVaults}${resourceToken}'
+    location: location
+    tags: tags
+    enableRbacAuthorization: true
+    publicNetworkAccess: vnetEnabled ? 'Disabled' : 'Enabled'
+  }
+}
+
+// Key Vault Secrets Officer role for MCP workload identity
+var keyVaultSecretsOfficerRoleId = 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7'
+module keyVaultRoleAssignmentMcp './core/keyvault/keyvault-access.bicep' = {
+  name: 'keyVaultRoleAssignmentMcp'
+  scope: rg
+  params: {
+    keyVaultName: keyVault.outputs.keyVaultName
+    roleDefinitionID: keyVaultSecretsOfficerRoleId
+    principalID: mcpUserAssignedIdentity.outputs.identityPrincipalId
+  }
+}
+
+// Key Vault private endpoint (if vnetEnabled)
+module keyVaultPrivateEndpoint './core/keyvault/keyvault-privateendpoint.bicep' = if (vnetEnabled) {
+  name: 'keyVaultPrivateEndpoint'
+  scope: rg
+  params: {
+    keyVaultName: keyVault.outputs.keyVaultName
+    location: location
+    tags: tags
+    virtualNetworkName: serviceVirtualNetworkName
+    subnetName: serviceVirtualNetworkPrivateEndpointSubnetName
+  }
+  dependsOn: [
+    serviceVirtualNetwork
+  ]
+}
+
 var monitoringRoleDefinitionId = '3913510d-42f4-4e42-8a64-420c390055eb' // Monitoring Metrics Publisher role ID
 
 // Allow access from MCP server workload identity to application insights
@@ -280,3 +321,7 @@ output CONTAINER_REGISTRY string = containerRegistry.outputs.containerRegistryLo
 output AZURE_STORAGE_ACCOUNT_URL string = storage.outputs.primaryEndpoints.blob
 output MCP_SERVER_IDENTITY_CLIENT_ID string = mcpUserAssignedIdentity.outputs.identityClientId
 output SERVICE_API_ENDPOINTS array = [ '${apimService.outputs.gatewayUrl}/mcp/sse' ]
+output AZURE_KEY_VAULT_URL string = keyVault.outputs.keyVaultUri
+output AZURE_KEY_VAULT_NAME string = keyVault.outputs.keyVaultName
+output LOG_ANALYTICS_WORKSPACE_ID string = monitoring.outputs.logAnalyticsWorkspaceId
+output AKS_OIDC_ISSUER_URL string = aksCluster.outputs.aksClusterOidcIssuerUrl

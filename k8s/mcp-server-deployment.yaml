@@ -35,6 +35,10 @@ spec:
           value: "${AZURE_STORAGE_ACCOUNT_URL}"
         - name: AZURE_CLIENT_ID
           value: "${AZURE_CLIENT_ID}"
+        - name: AZURE_KEY_VAULT_URL
+          value: "${AZURE_KEY_VAULT_URL}"
+        - name: APPLICATIONINSIGHTS_CONNECTION_STRING
+          value: "${APPLICATIONINSIGHTS_CONNECTION_STRING}"
         resources:
           requests:
             memory: "256Mi"

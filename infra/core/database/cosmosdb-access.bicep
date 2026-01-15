@@ -5,7 +5,8 @@ param cosmosAccountName string
 param principalId string
 
 @description('Role definition ID (built-in or custom)')
-param roleDefinitionId string = '00000000-0000-0000-0000-000000000002' // Cosmos DB Built-in Data Contributor
+// Cosmos DB Built-in Data Contributor role
+param roleDefinitionId string = '00000000-0000-0000-0000-000000000002'
 
 resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2024-05-15' existing = {
   name: cosmosAccountName

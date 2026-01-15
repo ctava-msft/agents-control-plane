@@ -18,6 +18,10 @@ from azure.storage.blob import BlobServiceClient
 from azure.identity import DefaultAzureCredential
 import os
 
+# Configure logging first
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # Import memory and Foundry IQ clients
 from foundry_iq_client import create_foundry_iq_client
 from cosmos_memory_client import create_cosmos_memory_client
@@ -30,10 +34,8 @@ from opentelemetry import trace
 appinsights_connection_string = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING")
 if appinsights_connection_string:
     configure_azure_monitor(connection_string=appinsights_connection_string)
-    logger = logging.getLogger(__name__)
     logger.info("Azure Monitor OpenTelemetry configured")
 else:
-    logger = logging.getLogger(__name__)
     logger.warning("APPLICATIONINSIGHTS_CONNECTION_STRING not set - telemetry disabled")
 
 tracer = trace.get_tracer(__name__)
@@ -328,7 +330,6 @@ async def execute_tool(tool_name: str, arguments: Dict[str, Any]) -> MCPToolResu
             content=[{"type": "text", "text": f"Error: {str(e)}"}],
             isError=True
         )
-
 
 
 @app.get("/health")

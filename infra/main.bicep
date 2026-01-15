@@ -321,6 +321,7 @@ module aiFoundry './core/ai/foundry-agent-service.bicep' = {
 }
 
 // Grant MCP identity access to Cosmos DB
+// Using Cosmos DB built-in Data Contributor role
 var cosmosDbDataContributorRoleId = '00000000-0000-0000-0000-000000000002'
 module cosmosDbRoleAssignment './core/database/cosmosdb-access.bicep' = {
   name: 'cosmosDbRoleAssignment'

@@ -8,6 +8,8 @@ pydantic==2.9.0
 # Azure AI and Memory Dependencies
 azure-cosmos==4.5.1
 azure-search-documents==11.4.0
+# Note: Using beta version of azure-ai-projects for Agent Service features
+# This is required for Azure AI Foundry Agent Service integration
 azure-ai-projects==1.0.0b2
 opentelemetry-api==1.27.0
 opentelemetry-sdk==1.27.0

@@ -87,10 +87,16 @@ class ToolRegistryClient:
             logger.info(f"Registering MCP tool: {tool_name}")
             logger.debug(f"Tool definition: {json.dumps(function_tool, indent=2)}")
             
-            # Note: Actual registration API may vary based on Azure AI SDK version
-            # This is a placeholder for the registration logic
-            logger.info(f"Successfully registered MCP tool: {tool_name}")
-            return True
+            # NOTE: This is a stub implementation. The actual Azure AI Projects SDK API
+            # for tool registration is not yet stable. When the SDK is GA, replace this
+            # with the actual registration call:
+            # result = self.client.agents.tools.create(tool_definition=function_tool)
+            # For now, we log the tool definition for manual registration.
+            logger.warning(f"Tool registration is currently a stub. Tool '{tool_name}' logged but not registered.")
+            logger.info(f"Tool definition for manual registration: {json.dumps(function_tool, indent=2)}")
+            
+            # Return False to indicate stub implementation
+            return False
             
         except Exception as e:
             logger.error(f"Error registering MCP tool {tool_name}: {e}")
@@ -131,10 +137,16 @@ class ToolRegistryClient:
             logger.info(f"Registering OpenAPI tool: {tool_name}")
             logger.debug(f"Tool definition: {json.dumps(openapi_tool, indent=2)}")
             
-            # Note: Actual registration API may vary based on Azure AI SDK version
-            # This is a placeholder for the registration logic
-            logger.info(f"Successfully registered OpenAPI tool: {tool_name}")
-            return True
+            # NOTE: This is a stub implementation. The actual Azure AI Projects SDK API
+            # for tool registration is not yet stable. When the SDK is GA, replace this
+            # with the actual registration call:
+            # result = self.client.agents.tools.create(tool_definition=openapi_tool)
+            # For now, we log the tool definition for manual registration.
+            logger.warning(f"Tool registration is currently a stub. Tool '{tool_name}' logged but not registered.")
+            logger.info(f"Tool definition for manual registration: {json.dumps(openapi_tool, indent=2)}")
+            
+            # Return False to indicate stub implementation
+            return False
             
         except Exception as e:
             logger.error(f"Error registering OpenAPI tool {tool_name}: {e}")

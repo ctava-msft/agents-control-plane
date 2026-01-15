@@ -2,6 +2,7 @@
 Foundry IQ Client - Integration with Azure AI Foundry for agentic search and retrieval
 """
 
+import json
 import logging
 import os
 from typing import Dict, Any, Optional, List
@@ -196,7 +197,7 @@ class FoundryIQClient:
                     "category": category,
                     "source": source,
                     "timestamp": datetime.utcnow().isoformat(),
-                    "metadata": str(metadata) if metadata else "",
+                    "metadata": json.dumps(metadata) if metadata else "",
                 }
                 
                 result = self.search_client.upload_documents(documents=[document])

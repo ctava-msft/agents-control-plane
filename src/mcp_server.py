@@ -1,6 +1,7 @@
 """
 FastAPI MCP Server - Replacement for Azure Functions
 Implements Model Context Protocol (MCP) with SSE support
+Enhanced with Foundry IQ and Cosmos DB memory capabilities
 """
 
 import json
@@ -17,14 +18,32 @@ from azure.storage.blob import BlobServiceClient
 from azure.identity import DefaultAzureCredential
 import os
 
-# Configure logging
+# Configure logging first
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Import memory and Foundry IQ clients
+from foundry_iq_client import create_foundry_iq_client
+from cosmos_memory_client import create_cosmos_memory_client
+
+# Configure OpenTelemetry for Application Insights
+from azure.monitor.opentelemetry import configure_azure_monitor
+from opentelemetry import trace
+
+# Configure Azure Monitor if connection string is available
+appinsights_connection_string = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING")
+if appinsights_connection_string:
+    configure_azure_monitor(connection_string=appinsights_connection_string)
+    logger.info("Azure Monitor OpenTelemetry configured")
+else:
+    logger.warning("APPLICATIONINSIGHTS_CONNECTION_STRING not set - telemetry disabled")
+
+tracer = trace.get_tracer(__name__)
 
 # Initialize FastAPI app
 app = FastAPI(
     title="MCP Server",
-    description="Model Context Protocol Server for AI Agents",
+    description="Model Context Protocol Server for AI Agents with Foundry IQ and Memory",
     version="1.0.0"
 )
 
@@ -43,6 +62,10 @@ else:
     blob_service_client = None
 
 SNIPPETS_CONTAINER = "snippets"
+
+# Initialize Foundry IQ and Cosmos DB clients
+foundry_iq_client = create_foundry_iq_client()
+cosmos_memory_client = create_cosmos_memory_client()
 
 # In-memory session storage (replace with Redis for production)
 sessions: Dict[str, Dict[str, Any]] = {}
@@ -104,6 +127,29 @@ TOOLS = [
                 }
             },
             "required": ["snippetname", "snippet"]
+        }
+    ),
+    MCPTool(
+        name="foundry_iq_search",
+        description="Search the agent knowledge base using Azure AI Foundry IQ for agentic retrieval and reasoning. Supports natural language queries.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Natural language search query"
+                },
+                "top": {
+                    "type": "integer",
+                    "description": "Number of results to return (default: 5)",
+                    "default": 5
+                },
+                "category": {
+                    "type": "string",
+                    "description": "Optional category filter"
+                }
+            },
+            "required": ["query"]
         }
     )
 ]
@@ -196,6 +242,81 @@ async def execute_tool(tool_name: str, arguments: Dict[str, Any]) -> MCPToolResu
                     content=[{"type": "text", "text": f"Error saving snippet: {str(e)}"}],
                     isError=True
                 )
+        
+        elif tool_name == "foundry_iq_search":
+            with tracer.start_as_current_span("mcp.foundry_iq_search") as span:
+                query = arguments.get("query")
+                top = arguments.get("top", 5)
+                category = arguments.get("category")
+                
+                if not query:
+                    return MCPToolResult(
+                        content=[{"type": "text", "text": "No search query provided"}],
+                        isError=True
+                    )
+                
+                if not foundry_iq_client:
+                    return MCPToolResult(
+                        content=[{"type": "text", "text": "Foundry IQ not configured. Set AZURE_SEARCH_ENDPOINT to enable search."}],
+                        isError=True
+                    )
+                
+                try:
+                    # Build filter if category provided
+                    filters = f"category eq '{category}'" if category else None
+                    
+                    # Perform search
+                    results = await foundry_iq_client.search_knowledge_base(
+                        query=query,
+                        top=top,
+                        filters=filters,
+                    )
+                    
+                    # Store trace in Cosmos DB if available
+                    if cosmos_memory_client:
+                        trace_id = str(uuid.uuid4())
+                        await cosmos_memory_client.store_tool_trace(
+                            tool_name="foundry_iq_search",
+                            trace_id=trace_id,
+                            execution_data={
+                                "query": query,
+                                "top": top,
+                                "category": category,
+                                "results_count": len(results),
+                            }
+                        )
+                    
+                    # Format results
+                    if not results:
+                        return MCPToolResult(
+                            content=[{
+                                "type": "text",
+                                "text": f"No results found for query: {query}"
+                            }]
+                        )
+                    
+                    result_text = f"Found {len(results)} results for query: {query}\n\n"
+                    for i, result in enumerate(results, 1):
+                        result_text += f"{i}. {result.get('title', 'Untitled')}\n"
+                        result_text += f"   Score: {result.get('score', 'N/A')}\n"
+                        result_text += f"   Content: {result.get('content', '')[:200]}...\n\n"
+                    
+                    span.set_attribute("search.results_count", len(results))
+                    
+                    return MCPToolResult(
+                        content=[{
+                            "type": "text",
+                            "text": result_text
+                        }]
+                    )
+                    
+                except Exception as e:
+                    logger.error(f"Error performing Foundry IQ search: {e}")
+                    span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
+                    return MCPToolResult(
+                        content=[{"type": "text", "text": f"Error performing search: {str(e)}"}],
+                        isError=True
+                    )
         
         else:
             return MCPToolResult(

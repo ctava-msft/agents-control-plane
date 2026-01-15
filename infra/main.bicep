@@ -269,6 +269,80 @@ module appInsightsRoleAssignmentMcp './core/monitor/appinsights-access.bicep' = 
   }
 }
 
+// Key Vault for AI Hub secrets
+module keyVault './core/security/keyvault.bicep' = {
+  name: 'keyVault'
+  scope: rg
+  params: {
+    keyVaultName: '${abbrs.keyVaultVaults}${resourceToken}'
+    location: location
+    tags: tags
+  }
+}
+
+// Cosmos DB for long-term memory and agent threads
+module cosmosDb './core/database/cosmosdb.bicep' = {
+  name: 'cosmosDb'
+  scope: rg
+  params: {
+    accountName: '${abbrs.documentDBDatabaseAccounts}${resourceToken}'
+    location: location
+    tags: tags
+    enableFreeTier: true
+  }
+}
+
+// Azure AI Search for retrieval and agentic search
+module aiSearch './core/search/ai-search.bicep' = {
+  name: 'aiSearch'
+  scope: rg
+  params: {
+    searchServiceName: '${abbrs.searchSearchServices}${resourceToken}'
+    location: location
+    tags: tags
+    sku: 'basic'
+  }
+}
+
+// Azure AI Foundry Agent Service for multi-agent orchestration
+module aiFoundry './core/ai/foundry-agent-service.bicep' = {
+  name: 'aiFoundry'
+  scope: rg
+  params: {
+    aiHubName: '${abbrs.machineLearningServicesWorkspaces}hub-${resourceToken}'
+    aiProjectName: '${abbrs.machineLearningServicesWorkspaces}proj-${resourceToken}'
+    location: location
+    tags: tags
+    keyVaultId: keyVault.outputs.keyVaultId
+    storageAccountId: storage.outputs.id
+    applicationInsightsId: monitoring.outputs.applicationInsightsId
+    containerRegistryId: containerRegistry.outputs.containerRegistryId
+  }
+}
+
+// Grant MCP identity access to Cosmos DB
+var cosmosDbDataContributorRoleId = '00000000-0000-0000-0000-000000000002'
+module cosmosDbRoleAssignment './core/database/cosmosdb-access.bicep' = {
+  name: 'cosmosDbRoleAssignment'
+  scope: rg
+  params: {
+    cosmosAccountName: cosmosDb.outputs.cosmosAccountName
+    roleDefinitionId: cosmosDbDataContributorRoleId
+    principalId: mcpUserAssignedIdentity.outputs.identityPrincipalId
+  }
+}
+
+// Grant MCP identity access to Azure AI Search
+var searchIndexDataContributorRoleId = '8ebe5a00-799e-43f5-93ac-243d3dce84a7'
+module searchRoleAssignment './core/search/search-access.bicep' = {
+  name: 'searchRoleAssignment'
+  scope: rg
+  params: {
+    searchServiceName: aiSearch.outputs.searchServiceName
+    roleDefinitionId: searchIndexDataContributorRoleId
+    principalId: mcpUserAssignedIdentity.outputs.identityPrincipalId
+  }
+}
 
 
 // App outputs
@@ -280,3 +354,12 @@ output CONTAINER_REGISTRY string = containerRegistry.outputs.containerRegistryLo
 output AZURE_STORAGE_ACCOUNT_URL string = storage.outputs.primaryEndpoints.blob
 output MCP_SERVER_IDENTITY_CLIENT_ID string = mcpUserAssignedIdentity.outputs.identityClientId
 output SERVICE_API_ENDPOINTS array = [ '${apimService.outputs.gatewayUrl}/mcp/sse' ]
+output COSMOS_DB_ENDPOINT string = cosmosDb.outputs.cosmosAccountEndpoint
+output COSMOS_DB_DATABASE_NAME string = cosmosDb.outputs.databaseName
+output COSMOS_DB_THREADS_CONTAINER string = cosmosDb.outputs.threadsContainerName
+output COSMOS_DB_TRACES_CONTAINER string = cosmosDb.outputs.toolTracesContainerName
+output AZURE_SEARCH_ENDPOINT string = aiSearch.outputs.searchServiceEndpoint
+output AZURE_SEARCH_SERVICE_NAME string = aiSearch.outputs.searchServiceName
+output AI_HUB_NAME string = aiFoundry.outputs.aiHubName
+output AI_PROJECT_NAME string = aiFoundry.outputs.aiProjectName
+output KEY_VAULT_NAME string = keyVault.outputs.keyVaultName

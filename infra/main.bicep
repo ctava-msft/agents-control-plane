@@ -321,7 +321,9 @@ module aiFoundry './core/ai/foundry-agent-service.bicep' = {
 }
 
 // Grant MCP identity access to Cosmos DB
-// Using Cosmos DB built-in Data Contributor role
+// Cosmos DB Built-in Data Contributor role - allows read/write access to data plane
+// This is a built-in Cosmos DB role definition (not an Azure RBAC role)
+// Reference: https://learn.microsoft.com/azure/cosmos-db/how-to-setup-rbac
 var cosmosDbDataContributorRoleId = '00000000-0000-0000-0000-000000000002'
 module cosmosDbRoleAssignment './core/database/cosmosdb-access.bicep' = {
   name: 'cosmosDbRoleAssignment'

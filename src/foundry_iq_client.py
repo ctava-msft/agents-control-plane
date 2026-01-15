@@ -190,6 +190,15 @@ class FoundryIQClient:
             try:
                 from datetime import datetime
                 
+                # Serialize metadata with error handling
+                metadata_str = ""
+                if metadata:
+                    try:
+                        metadata_str = json.dumps(metadata)
+                    except (TypeError, ValueError) as e:
+                        logger.warning(f"Failed to serialize metadata, using string representation: {e}")
+                        metadata_str = str(metadata)
+                
                 document = {
                     "id": doc_id,
                     "content": content,
@@ -197,7 +206,7 @@ class FoundryIQClient:
                     "category": category,
                     "source": source,
                     "timestamp": datetime.utcnow().isoformat(),
-                    "metadata": json.dumps(metadata) if metadata else "",
+                    "metadata": metadata_str,
                 }
                 
                 result = self.search_client.upload_documents(documents=[document])

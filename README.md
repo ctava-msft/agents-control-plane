@@ -2,7 +2,7 @@
 
 ![AI Agent Architecture](mcp-client-authorization.gif)
 
-Build powerful AI agents using **Azure Foundry models** deployed on Kubernetes with the **Model Context Protocol (MCP)**. This solution uses **Azure Kubernetes Service (AKS)**, **Kaito** for simplified LLM deployment, and **Azure API Management (APIM)** as an intelligent AI Gateway.
+Build powerful AI agents using **Azure Foundry models** deployed on Kubernetes with the **Model Context Protocol (MCP)**. This solution uses **Azure Kubernetes Service (AKS)**, **Kaito** for simplified LLM deployment, **Azure API Management (APIM)** as an intelligent AI Gateway, and **Azure AI Foundry Agent Service** for multi-agent orchestration.
 
 ## 🎯 What This Solution Provides
 
@@ -12,6 +12,9 @@ Build powerful AI agents using **Azure Foundry models** deployed on Kubernetes w
 - **🔧 Custom Tools**: Extensible MCP tools for AI agents (snippet storage, custom integrations)
 - **🛡️ Enterprise Security**: APIM gateway with OAuth authentication and authorization
 - **📊 Production Ready**: Monitoring, logging, and auto-scaling built-in
+- **🧠 Central Memory**: Cosmos DB for long-term agent memory and conversation threads
+- **🔍 Foundry IQ**: Azure AI Search integration for agentic retrieval and reasoning
+- **🎭 Multi-Agent Orchestration**: Azure AI Foundry Agent Service for coordinating multiple agents
 
 ## 🏗️ Architecture
 
@@ -22,10 +25,18 @@ Azure API Management (OAuth + Gateway)
     ↓
 AKS Cluster
     ├── MCP Server (FastAPI)
-    │   └── Tools: hello_mcp, save_snippet, get_snippet
+    │   ├── Tools: hello_mcp, save_snippet, get_snippet, foundry_iq_search
+    │   ├── Foundry IQ Client (Azure AI Search)
+    │   └── Memory Client (Cosmos DB)
     └── Kaito Workspace
         └── Azure Foundry Model (Phi-3, etc.)
             └── GPU Node Pool (NC-series VMs)
+
+Supporting Services:
+├── Cosmos DB (Agent threads & tool traces)
+├── Azure AI Search (Knowledge base & retrieval)
+├── Azure AI Foundry Agent Service (Multi-agent orchestration)
+└── Application Insights (Telemetry & tracing)
 ```
 
 ### Key Components
@@ -36,6 +47,9 @@ AKS Cluster
 4. **Azure Foundry Models**: Enterprise LLMs (Phi-3, Llama, etc.) containerized and ready to deploy
 5. **APIM**: Handles authentication, rate limiting, and API gateway functions
 6. **Azure Storage**: Persistent storage for agent data (snippets, documents, etc.)
+7. **Cosmos DB**: Long-term memory storage for agent conversations and tool execution traces
+8. **Azure AI Search**: Knowledge base indexing and Foundry IQ agentic search
+9. **Azure AI Foundry Agent Service**: Multi-agent orchestration and tool registry
 
 ### Available MCP Tools
 
@@ -44,6 +58,7 @@ AKS Cluster
 | `hello_mcp` | Simple test tool | None |
 | `save_snippet` | Save text/code snippets to Azure Storage | `snippetname`, `snippet` |
 | `get_snippet` | Retrieve saved snippets | `snippetname` |
+| `foundry_iq_search` | Search knowledge base using Foundry IQ | `query`, `top` (optional), `category` (optional) |
 
 ## 🚀 Quick Start
 
@@ -290,14 +305,100 @@ spotMaxPrice: -1  # Pay up to regular price
 - **Workload Identity**: Pod-level managed identities
 - **Network**: Optional VNet isolation (`vnetEnabled=true`)
 - **RBAC**: Kubernetes and Azure RBAC enabled
+- **Data Encryption**: Cosmos DB and Azure Storage encryption at rest
+- **Access Control**: Azure AI Search and Foundry Agent Service ACLs
+
+## 🧠 Central Memory & Foundry IQ
+
+### Long-term Memory with Cosmos DB
+
+The MCP server automatically stores conversation threads and tool execution traces in Cosmos DB:
+
+```python
+# Thread storage happens automatically
+# Retrieve conversation history
+from cosmos_memory_client import create_cosmos_memory_client
+
+memory_client = create_cosmos_memory_client()
+history = await memory_client.get_thread_history(
+    agent_id="my-agent",
+    thread_id="conversation-123"
+)
+```
+
+**Environment Variables:**
+```bash
+export COSMOS_DB_ENDPOINT="https://your-cosmos.documents.azure.com:443/"
+export COSMOS_DB_DATABASE_NAME="agents-memory"
+export COSMOS_DB_THREADS_CONTAINER="threads"
+export COSMOS_DB_TRACES_CONTAINER="tool-traces"
+```
+
+### Agentic Search with Foundry IQ
+
+Use the `foundry_iq_search` tool for intelligent knowledge retrieval:
+
+```json
+{
+  "tool": "foundry_iq_search",
+  "arguments": {
+    "query": "How do I deploy a new model?",
+    "top": 5,
+    "category": "documentation"
+  }
+}
+```
+
+**Indexing Documents:**
+```python
+from foundry_iq_client import create_foundry_iq_client
+
+foundry_iq = create_foundry_iq_client()
+await foundry_iq.index_document(
+    doc_id="doc-123",
+    content="Your document content here",
+    title="Document Title",
+    category="documentation"
+)
+```
+
+**Environment Variables:**
+```bash
+export AZURE_SEARCH_ENDPOINT="https://your-search.search.windows.net"
+export AZURE_SEARCH_INDEX_NAME="agent-knowledge-base"
+```
+
+### Multi-Agent Orchestration
+
+Register your MCP tools with Azure AI Foundry Agent Service for multi-agent coordination:
+
+```bash
+# Register tools
+python -m tool_registry sync \
+  --mcp-endpoint "https://your-apim.azure-api.net/mcp" \
+  --ai-project-endpoint "https://your-project.api.azureml.ms"
+```
+
+See [Tool Registry Documentation](docs/TOOL_REGISTRY.md) for details.
+
+**Environment Variables:**
+```bash
+export AI_PROJECT_ENDPOINT="https://your-project.api.azureml.ms"
+export AI_PROJECT_NAME="your-project-name"
+export MCP_ENDPOINT_URL="https://your-apim.azure-api.net/mcp"
+```
 
 ## 📚 Learn More
 
 - [Kaito Project](https://github.com/kaito-project/kaito) - Kubernetes AI Toolchain Operator
 - [Azure Kubernetes Service](https://learn.microsoft.com/azure/aks/)
 - [Model Context Protocol](https://modelcontextprotocol.io/)
-- [Azure Foundry](https://learn.microsoft.com/azure/ai-studio/)
+- [Azure AI Foundry](https://learn.microsoft.com/azure/ai-studio/)
+- [Azure AI Agent Service](https://learn.microsoft.com/azure/ai-studio/concepts/agents)
 - [Azure API Management](https://learn.microsoft.com/azure/api-management/)
+- [Azure Cosmos DB](https://learn.microsoft.com/azure/cosmos-db/)
+- [Azure AI Search](https://learn.microsoft.com/azure/search/)
+- [Tool Registry Documentation](docs/TOOL_REGISTRY.md) - Multi-agent orchestration guide
 
 ## 🤝 Contributing
 
